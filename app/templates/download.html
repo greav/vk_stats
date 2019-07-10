@@ -1,0 +1,54 @@
+{% extends 'base.html' %}
+
+{% block content_title %}
+    Download page
+{% endblock %}
+
+{% block content %}
+
+<div class="col-md-6">
+    <form action="{{ url_for('download')}}" method="POST">
+
+            <div class="form-group">
+                {{ form.user_id.label(class='control-label') }}
+                {{ form.user_id(class='form-control') }}
+            </div>
+            <div class="form-group">
+                {{ form.date.label(class='control-label') }}
+                {{ form.date(class='form-control') }}
+            </div>
+            <div class="form-check">
+                {{ form.post_id_checked(class='form-check-input') }}
+                {{ form.post_id_checked.label(class='form-check-label') }}
+            </div>
+            <div class="form-check">
+                {{ form.text_checked(class='form-check-input') }}
+                {{ form.text_checked.label(class='form-check-label') }}
+            </div>
+            <div class="form-check">
+                {{ form.attachments_checked(class='form-check-input') }}
+                {{ form.attachments_checked.label(class='form-check-label') }}
+            </div>
+            <div class="form-check">
+                {{ form.n_attachments_checked(class='form-check-input') }}
+                {{ form.n_attachments_checked.label(class='form-check-label') }}
+            </div>
+            <div class="form-check">
+                {{ form.n_likes_checked(class='form-check-input') }}
+                {{ form.n_likes_checked.label(class='form-check-label') }}
+            </div>
+            <div class="form-check">
+                {{ form.n_reposts_checked(class='form-check-input') }}
+                {{ form.n_reposts_checked.label(class='form-check-label') }}
+            </div>
+            <div class="form-check">
+                {{ form.n_comments_checked(class='form-check-input') }}
+                {{ form.n_comments_checked.label(class='form-check-label') }}
+            </div>
+
+        <button type="submit" class="btn btn-primary">Download</button>
+    </form>
+
+</div>
+
+{% endblock %}
