@@ -1,9 +1,42 @@
 {% extends 'base.html' %}
 
 {% block content_title %}
-    Statisitcs page
+            Statisitcs page
+
 {% endblock %}
 
 {% block content %}
-    Statistics content
+<div class="col-md-6 container-fluid">
+    <form action="{{ url_for('statistics')}}" method="POST">
+
+            <div class="form-group">
+                {{ form.user_id.label(class='control-label') }}
+                {{ form.user_id(class='form-control') }}
+            </div>
+            <div class="form-group">
+                {{ form.date.label(class='control-label') }}
+                {{ form.date(class='form-control') }}
+            </div>
+        {% for subfield in form.radio %}
+         <tr>
+           <td>{{ subfield }}</td>
+           <td>{{ subfield.label }}</td>
+        </tr>
+        {% endfor %}
+        </br>
+
+        <button type="submit" class="btn btn-primary">Generate</button>
+    </form>
+
+
+
+</div>
+
+<div class="container">
+     {% if figure %}
+      <img src="data:image/png;base64,{{ figure }}">
+    {% endif %}
+</div>
 {% endblock %}
+
+
