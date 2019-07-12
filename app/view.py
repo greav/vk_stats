@@ -1,6 +1,7 @@
 from app import app
 from flask import render_template, request, Response
 from forms import DownloadForm, StatisticsForm
+from config import ACCESS_TOKEN
 
 from matplotlib import pyplot as plt
 
@@ -19,19 +20,27 @@ def get_user_posts(user_id, date):
     date = datetime.datetime.strptime(date, '%Y-%m-%d')
     timestamp = calendar.timegm(date.utctimetuple())
 
-    access_token = '068032e91a85fcd2ebfc5e95ddae1963408075ec286f92ff9e66fcf80bfc46321c3aeef7d03d990b488f7'
-    session = vk_api.VkApi(token=access_token)
+    session = vk_api.VkApi(token=ACCESS_TOKEN)
     vk = session.get_api()
 
-    post = vk.wall.get(owner_id=user_id, count=1)
+    if isinstance(user_id, int):
+        kwargs = {'owner_id': user_id}
+    else:
+        kwargs = {'domain': user_id}
+
+    post = vk.wall.get(**kwargs, count=1)
     posts_count = post['count']
+
+    if posts_count == 0:
+        return []
+
     valid_posts = []
 
     if post['items'][0]['date'] > timestamp:
         valid_posts.append(post['items'][0])
 
     for offset in range(1, posts_count, 100):
-        posts = vk.wall.get(owner_id=user_id, count=100, offset=offset)['items']
+        posts = vk.wall.get(**kwargs, count=100, offset=offset)['items']
         if posts[-1]['date'] > timestamp:
             valid_posts.extend(posts)
             continue
@@ -45,8 +54,8 @@ def get_user_posts(user_id, date):
 
 
 @app.route('/')
-def index():
-    return render_template('index.html')
+def about():
+    return render_template('about.html')
 
 
 @app.route('/download')
@@ -59,7 +68,10 @@ def download():
 @app.route('/download/data.csv', methods=['POST'])
 def generate_csv():
 
-    user_id = int(request.form.get('user_id'))
+    user_id = request.form.get('user_id')
+    if user_id.isdigit():
+        user_id = int(user_id)
+
     date = request.form.get('date')
 
     checked_fields = OrderedDict()

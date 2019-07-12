@@ -1,12 +1,20 @@
 {% extends 'base.html' %}
 
+{% block title %}
+<title>Download | VK STATS</title>
+{% endblock %}
+
+{% block selected_download_page %} active {% endblock %}
+
 {% block content_title %}
+<div class="col-md-6 container-fluid" >
     Download page
+</div>
 {% endblock %}
 
 {% block content %}
 
-<div class="col-md-6">
+<div class="col-md-6 container-fluid" >
     <form action="{{ url_for('generate_csv')}}" method="POST">
 
             <div class="form-group">
