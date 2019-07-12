@@ -35,15 +35,29 @@
         <button type="submit" class="btn btn-primary">Generate</button>
     </form>
 
-
+    <div class="container" >
+        {% with messages = get_flashed_messages() %}
+            {% if messages %}
+                {% for message in messages %}
+                    <div class="alert alert-warning alert-dismissible fade show" role="alert">
+                      <span> {{ message }} </span>
+                      <button type="button" class="close" data-dismiss="alert" aria-label="Close">
+                        <span aria-hidden="true">&times;</span>
+                      </button>
+                    </div>
+                {% endfor %}
+            {% endif %}
+        {% endwith %}
+    </div>
 
 </div>
 
-<div class="container">
+  <div class="container">
      {% if figure %}
       <img src="data:image/png;base64,{{ figure }}">
     {% endif %}
-</div>
+    </div>
+
 {% endblock %}
 
 

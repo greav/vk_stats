@@ -1,5 +1,5 @@
 from app import app
-from flask import render_template, request, Response
+from flask import render_template, request, Response, redirect, url_for, flash
 from forms import DownloadForm, StatisticsForm
 from config import ACCESS_TOKEN
 
@@ -28,7 +28,11 @@ def get_user_posts(user_id, date):
     else:
         kwargs = {'domain': user_id}
 
-    post = vk.wall.get(**kwargs, count=1)
+    try:
+        post = vk.wall.get(**kwargs, count=1)
+    except vk_api.ApiError:
+        return []
+
     posts_count = post['count']
 
     if posts_count == 0:
@@ -84,7 +88,19 @@ def generate_csv():
     checked_fields['n_reposts'] = bool(request.form.get('n_reposts_checked'))
     checked_fields['n_comments'] = bool(request.form.get('n_comments_checked'))
 
+    if not any(checked_fields.values()):
+        flash('You should choose at least one of the options above')
+        return redirect(url_for('download'))
+
+    if checked_fields['n_attachments'] and not checked_fields['attachments']:
+        flash('You cannot select "Number of attachments" field without "Attachments" field')
+        return redirect(url_for('download'))
+
     posts = get_user_posts(user_id, date)
+
+    if not posts:
+        flash('No posts for this user. Try another date or user ID')
+        return redirect(url_for('download'))
 
     def generate(posts):
         header = [key for key, value in checked_fields.items() if value]
@@ -93,7 +109,7 @@ def generate_csv():
             row = []
             if checked_fields['post_id']:
                 row.append(str(post['id']))
-            if checked_fields['post_id']:
+            if checked_fields['text']:
                 text = post['text']
                 row.append(f'"{text}"')
             if checked_fields['attachments']:
@@ -151,11 +167,18 @@ def statistics():
     form = StatisticsForm()
 
     if request.method == 'POST':
-        user_id = int(request.form.get('user_id'))
+        user_id = request.form.get('user_id')
+        if user_id.isdigit():
+            user_id = int(user_id)
+
         date = request.form.get('date')
         radio = request.form.get('radio')
 
         posts = filter_posts(get_user_posts(user_id, date))
+        if not posts:
+            flash('No data to draw. Try another date or user ID')
+            return redirect(request.url)
+
         plot_url = get_plot_url(posts, radio)
 
         return render_template('statistics.html', form=form, figure=plot_url)
@@ -187,39 +210,48 @@ def get_plot_url(valid_posts, radio):
     if radio == 'hour':
         gb = df.groupby(lambda i: df.loc[i, 'date'].hour)[['n_likes', 'n_comments', 'n_reposts']].agg(
             ['mean', 'count'])
-        x = gb.index
+        rotation = 0
+        x, x_label = gb.index, 'hour'
     elif radio == 'dow':
         gb = df.groupby(lambda i: df.loc[i, 'date'].dayofweek)[['n_likes', 'n_comments', 'n_reposts']].agg(
             ['mean', 'count'])
-        x = gb.index
+        x = gb.index.map({0: 'Mon', 1: 'Tue', 2: 'Wed', 3: 'Thu', 4: 'Fri', 5: 'Sat', 6: 'Sun'})
+        rotation = 0
+        x_label = 'day of week'
     elif radio == 'month':
         gb = df.groupby(lambda i: df.loc[i, 'date'].month)[['n_likes', 'n_comments', 'n_reposts']].agg(
             ['mean', 'count'])
-        x = gb.index
-    elif radio == 'year':
+        x = gb.index.map({1: 'Jan', 2: 'Feb', 3: 'Mar', 4: 'Apr', 5: 'May', 6: 'June', 7: 'July', 8: 'Aug', 9: 'Sept',
+                          10: 'Oct', 11: 'Nov', 12: 'Dec'})
+        rotation = 90
+        x_label = 'month'
+    else:
         gb = df.groupby(lambda i: df.loc[i, 'date'].year)[['n_likes', 'n_comments', 'n_reposts']].agg(
             ['mean', 'count'])
-        x = gb.index
+        rotation = 0
+        x, x_label = gb.index, 'year'
 
-    fig, axs = plt.subplots(nrows=2, ncols=2, figsize=(12, 8))
+    fig, axs = plt.subplots(nrows=2, ncols=2, figsize=(12, 12))
 
-    sns.barplot(x, gb[('n_likes', 'count')], ax=axs[0, 0])
-    sns.barplot(x, gb[('n_likes', 'mean')], ax=axs[0, 1])
-    sns.barplot(x, gb[('n_comments', 'mean')], ax=axs[1, 0])
-    sns.barplot(x, gb[('n_reposts', 'mean')], ax=axs[1, 1])
+    draw_barplot(gb, x, ('n_likes', 'count'), axs[0, 0], x_label, y_label='count',
+                 title='Number of posts', rotation=rotation)
+    draw_barplot(gb, x, ('n_likes', 'mean'), axs[0, 1], x_label, y_label='avg',
+                 title='Average number of likes', rotation=rotation)
+    draw_barplot(gb, x, ('n_comments', 'mean'), axs[1, 0], x_label, y_label='avg',
+                 title='Average number of comments', rotation=rotation)
+    draw_barplot(gb, x, ('n_reposts', 'mean'), axs[1, 1], x_label, y_label='avg',
+                 title='Average number of reposts', rotation=rotation)
 
-    axs[0, 0].set_ylabel('count')
-    axs[0, 1].set_ylabel('avg')
-    axs[1, 0].set_ylabel('avg')
-    axs[1, 1].set_ylabel('avg')
-
-    axs[0, 0].set_title('Number of posts')
-    axs[0, 1].set_title('Average number of likes')
-    axs[1, 0].set_title('Average number of comments')
-    axs[1, 1].set_title('Average number of reposts')
-
-    plt.savefig(img, format='png')
+    fig.savefig(img, format='png')
     img.seek(0)
     plot_url = base64.b64encode(img.getvalue()).decode()
 
     return plot_url
+
+
+def draw_barplot(df, x, y, ax, x_label, y_label, title, rotation=0):
+    g = sns.barplot(x, df[y], ax=ax)
+    g.set_xticklabels(x, rotation=rotation, axes=ax)
+    ax.set_ylabel(y_label)
+    ax.set_xlabel(x_label)
+    ax.set_title(title)

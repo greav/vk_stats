@@ -1,10 +1,11 @@
 from wtforms import Form, IntegerField, BooleanField, RadioField
 from wtforms.fields.html5 import DateField
+from wtforms.validators import DataRequired
 
 
 class DownloadForm(Form):
-    user_id = IntegerField('User ID')
-    date = DateField('Date')
+    user_id = IntegerField('User ID', validators=[DataRequired()])
+    date = DateField('Date', validators=[DataRequired()])
     post_id_checked = BooleanField('Post ID')
     text_checked = BooleanField('Text')
     attachments_checked = BooleanField('Attachments')
@@ -15,8 +16,8 @@ class DownloadForm(Form):
 
 
 class StatisticsForm(Form):
-    user_id = IntegerField('User ID')
-    date = DateField('Date')
+    user_id = IntegerField('User ID', validators=[DataRequired()])
+    date = DateField('Date', validators=[DataRequired()])
     radio = RadioField('Label', choices=[('hour', 'by hours'), ('dow', 'by days of week'), ('month', 'by months'),
                                          ('year', 'by years')], default='hour')
 
