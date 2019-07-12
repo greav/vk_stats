@@ -12,13 +12,14 @@ import io
 import base64
 import pandas as pd
 import seaborn as sns
+from collections import OrderedDict
 
 
 def get_user_posts(user_id, date):
     date = datetime.datetime.strptime(date, '%Y-%m-%d')
     timestamp = calendar.timegm(date.utctimetuple())
 
-    access_token = '94af586cbe41468638e9ba8ed84ff648cf6c90f006b2c4cbc258b7a8a13be1f7c796ebf1837ba4bdb5b7b'
+    access_token = '068032e91a85fcd2ebfc5e95ddae1963408075ec286f92ff9e66fcf80bfc46321c3aeef7d03d990b488f7'
     session = vk_api.VkApi(token=access_token)
     vk = session.get_api()
 
@@ -43,40 +44,6 @@ def get_user_posts(user_id, date):
     return valid_posts
 
 
-def filter_posts(posts, post_id_checked, text_checked, attachments_checked, n_attachments_checked, n_likes_checked,
-                 n_reposts_checked, n_comments_checked):
-    valid_posts = []
-    for post in posts:
-        post_id = post['id']
-        text = post['text']
-        attachments = post.get('attachments')
-        n_attachments = len(attachments) if attachments else 0
-        n_likes = post['likes']['count']
-        n_comments = post['comments']['count']
-        n_reposts = post['reposts']['count']
-
-        valid_post = [post_id, '"' + text + '"', n_attachments, n_likes, n_comments, n_reposts]
-        valid_posts.append(valid_post)
-
-    return valid_posts
-
-
-def filter_posts_2(posts):
-    valid_posts = []
-    for post in posts:
-        post_id = post['id']
-        date = post['date']
-        n_likes = post['likes']['count']
-        n_comments = post['comments']['count']
-        n_reposts = post['reposts']['count']
-
-        valid_post = [post_id, date, n_likes, n_comments, n_reposts]
-        valid_posts.append(valid_post)
-
-    return valid_posts
-
-
-
 @app.route('/')
 def index():
     return render_template('index.html')
@@ -91,26 +58,80 @@ def download():
 
 @app.route('/download/data.csv', methods=['POST'])
 def generate_csv():
+
     user_id = int(request.form.get('user_id'))
     date = request.form.get('date')
-    post_id_checked = bool(request.form.get('post_id_checked'))
-    text_checked = bool(request.form.get('text_checked'))
-    attachments_checked = bool(request.form.get('attachments_checked'))
-    n_attachments_checked = bool(request.form.get('n_attachments_checked'))
-    n_likes_checked = bool(request.form.get('n_likes_checked'))
-    n_reposts_checked = bool(request.form.get('n_reposts_checked'))
-    n_comments_checked = bool(request.form.get('n_comments_checked'))
+
+    checked_fields = OrderedDict()
+
+    checked_fields['post_id'] = bool(request.form.get('post_id_checked'))
+    checked_fields['text'] = bool(request.form.get('text_checked'))
+    checked_fields['attachments'] = bool(request.form.get('attachments_checked'))
+    checked_fields['n_attachments'] = bool(request.form.get('n_attachments_checked'))
+    checked_fields['n_likes'] = bool(request.form.get('n_likes_checked'))
+    checked_fields['n_reposts'] = bool(request.form.get('n_reposts_checked'))
+    checked_fields['n_comments'] = bool(request.form.get('n_comments_checked'))
 
     posts = get_user_posts(user_id, date)
 
-    valid_posts = filter_posts(posts, post_id_checked, text_checked, attachments_checked, n_attachments_checked,
-                               n_likes_checked, n_reposts_checked, n_comments_checked)
-
     def generate(posts):
-        for row in posts:
-            yield ','.join([str(field) for field in row]) + '\n'
+        header = [key for key, value in checked_fields.items() if value]
+        yield ','.join(header) + '\n'
+        for post in posts:
+            row = []
+            if checked_fields['post_id']:
+                row.append(str(post['id']))
+            if checked_fields['post_id']:
+                text = post['text']
+                row.append(f'"{text}"')
+            if checked_fields['attachments']:
+                attachments = get_attachments(post)
+                row.append(f'"{attachments}"')
+            if checked_fields['n_attachments']:
+                n_attachments = len(attachments) if attachments else 0
+                row.append(str(n_attachments))
+            if checked_fields['n_likes']:
+                row.append(str(post['likes']['count']))
+            if checked_fields['n_comments']:
+                row.append(str(post['comments']['count']))
+            if checked_fields['n_reposts']:
+                row.append(str(post['reposts']['count']))
 
-    return Response(generate(valid_posts), mimetype='text/csv')
+            yield ','.join(row) + '\n'
+
+    return Response(generate(posts), mimetype='text/csv')
+
+
+def get_attachments(post):
+    attachments = post.get('attachments')
+    attachments_urls = []
+    if attachments:
+        for attachment in attachments:
+            if attachment.get('type') == 'photo':
+                for photocopy in attachment['photo']['sizes']:
+                    if photocopy['type'] == 'x':
+                        attachments_urls.append(photocopy['url'])
+                        break
+                continue
+            if attachment.get('type') == 'link':
+                attachments_urls.append(attachment['link']['url'])
+                continue
+            elif attachment.get('type') == 'doc':
+                attachments_urls.append(attachment['doc']['url'])
+                continue
+            elif attachment.get('type') == 'video':
+                video_id = attachment['video']['id']
+                owner_id = attachment['video']['owner_id']
+                video_url = f'https://vk.com/video{owner_id}_{video_id}'
+                attachments_urls.append(video_url)
+    elif post.get('copy_history'):
+        repost = post['copy_history'][0]
+        post_id = repost['id']
+        owner_id = repost['owner_id']
+        repost_url = f'https://vk.com/wall{owner_id}_{post_id}'
+        attachments_urls.append(repost_url)
+
+    return attachments_urls
 
 
 @app.route('/statistics', methods=['GET', 'POST'])
@@ -122,14 +143,27 @@ def statistics():
         date = request.form.get('date')
         radio = request.form.get('radio')
 
-        posts = get_user_posts(user_id, date)
-        valid_posts = filter_posts_2(posts)
-
-        plot_url = get_plot_url(valid_posts, radio)
+        posts = filter_posts(get_user_posts(user_id, date))
+        plot_url = get_plot_url(posts, radio)
 
         return render_template('statistics.html', form=form, figure=plot_url)
 
     return render_template('statistics.html', form=form, figure=None)
+
+
+def filter_posts(posts):
+    valid_posts = []
+    for post in posts:
+        post_id = post['id']
+        date = post['date']
+        n_likes = post['likes']['count']
+        n_comments = post['comments']['count']
+        n_reposts = post['reposts']['count']
+
+        valid_post = [post_id, date, n_likes, n_comments, n_reposts]
+        valid_posts.append(valid_post)
+
+    return valid_posts
 
 
 def get_plot_url(valid_posts, radio):
