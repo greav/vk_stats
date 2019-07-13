@@ -1,11 +1,3 @@
-from app import app
-from flask import render_template, request, Response, redirect, url_for, flash
-from .forms import DownloadForm, StatisticsForm
-from .config import ACCESS_TOKEN
-
-from matplotlib import pyplot as plt
-
-
 import datetime
 import calendar
 import vk_api
@@ -13,6 +5,13 @@ import io
 import base64
 import pandas as pd
 import seaborn as sns
+
+from app import app
+from .forms import DownloadForm, StatisticsForm
+from .config import ACCESS_TOKEN
+
+from flask import render_template, request, Response, redirect, url_for, flash
+from matplotlib import pyplot as plt
 from collections import OrderedDict
 
 
@@ -68,14 +67,13 @@ def about():
 
 @app.route('/download')
 def download():
-
     form = DownloadForm()
     return render_template('download.html', form=form)
 
 
 @app.route('/download/data.csv', methods=['POST'])
 def generate_csv():
-
+    # process user_id or user domain
     user_id = request.form.get('user_id')
     if user_id.isdigit():
         user_id = int(user_id)
@@ -83,7 +81,7 @@ def generate_csv():
     date = request.form.get('date')
 
     checked_fields = OrderedDict()
-
+    # get states of checkbuttons
     checked_fields['post_id'] = bool(request.form.get('post_id_checked'))
     checked_fields['text'] = bool(request.form.get('text_checked'))
     checked_fields['attachments'] = bool(request.form.get('attachments_checked'))
@@ -92,10 +90,12 @@ def generate_csv():
     checked_fields['n_reposts'] = bool(request.form.get('n_reposts_checked'))
     checked_fields['n_comments'] = bool(request.form.get('n_comments_checked'))
 
+    # not any checkbutton selected
     if not any(checked_fields.values()):
         flash('You should choose at least one of the options above')
         return redirect(url_for('download'))
 
+    # number of attachments is selected and no attachments are selected
     if checked_fields['n_attachments'] and not checked_fields['attachments']:
         flash('You cannot select "Number of attachments" field without "Attachments" field')
         return redirect(url_for('download'))
@@ -106,10 +106,11 @@ def generate_csv():
         flash('No posts for this user. Try another date or user ID')
         return redirect(url_for('download'))
 
-    def generate(posts):
+    # generator for csv file
+    def generate(valid_posts):
         header = [key for key, value in checked_fields.items() if value]
         yield ','.join(header) + '\n'
-        for post in posts:
+        for post in valid_posts:
             row = []
             if checked_fields['post_id']:
                 row.append(str(post['id']))
@@ -171,19 +172,20 @@ def statistics():
     form = StatisticsForm()
 
     if request.method == 'POST':
+        # process user_id or user domain
         user_id = request.form.get('user_id')
         if user_id.isdigit():
             user_id = int(user_id)
 
         date = request.form.get('date')
-        radio = request.form.get('radio')
+        radio_button = request.form.get('radio')
 
         posts = filter_posts(get_user_posts(user_id, date))
         if not posts:
             flash('No data to draw. Try another date or user ID')
             return redirect(request.url)
 
-        plot_url = get_plot_url(posts, radio)
+        plot_url = get_plot_url(posts, radio_button)
 
         return render_template('statistics.html', form=form, figure=plot_url)
 
@@ -205,24 +207,24 @@ def filter_posts(posts):
     return valid_posts
 
 
-def get_plot_url(valid_posts, radio):
+def get_plot_url(valid_posts, radio_button):
     img = io.BytesIO()
 
     df = pd.DataFrame(data=valid_posts, columns=['post_id', 'date', 'n_likes', 'n_comments', 'n_reposts'])
     df['date'] = pd.to_datetime(df['date'], unit='s')
 
-    if radio == 'hour':
+    if radio_button == 'hour':
         gb = df.groupby(lambda i: df.loc[i, 'date'].hour)[['n_likes', 'n_comments', 'n_reposts']].agg(
             ['mean', 'count'])
         rotation = 0
         x, x_label = gb.index, 'hour'
-    elif radio == 'dow':
+    elif radio_button == 'dow':
         gb = df.groupby(lambda i: df.loc[i, 'date'].dayofweek)[['n_likes', 'n_comments', 'n_reposts']].agg(
             ['mean', 'count'])
         x = gb.index.map({0: 'Mon', 1: 'Tue', 2: 'Wed', 3: 'Thu', 4: 'Fri', 5: 'Sat', 6: 'Sun'})
         rotation = 0
         x_label = 'day of week'
-    elif radio == 'month':
+    elif radio_button == 'month':
         gb = df.groupby(lambda i: df.loc[i, 'date'].month)[['n_likes', 'n_comments', 'n_reposts']].agg(
             ['mean', 'count'])
         x = gb.index.map({1: 'Jan', 2: 'Feb', 3: 'Mar', 4: 'Apr', 5: 'May', 6: 'June', 7: 'July', 8: 'Aug', 9: 'Sept',

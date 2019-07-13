@@ -20,7 +20,3 @@ class StatisticsForm(Form):
     date = DateField('Date', validators=[DataRequired()])
     radio = RadioField('Label', choices=[('hour', 'by hours'), ('dow', 'by days of week'), ('month', 'by months'),
                                          ('year', 'by years')], default='hour')
-
-
-
-
