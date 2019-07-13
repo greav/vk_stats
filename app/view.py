@@ -1,7 +1,7 @@
 from app import app
 from flask import render_template, request, Response, redirect, url_for, flash
-from forms import DownloadForm, StatisticsForm
-from config import ACCESS_TOKEN
+from .forms import DownloadForm, StatisticsForm
+from .config import ACCESS_TOKEN
 
 from matplotlib import pyplot as plt
 

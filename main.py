@@ -1,6 +1,6 @@
 from app import app
-from config import DEBUG
-import view
+from app.config import DEBUG
+# from .app import view
 
 
 if __name__ == '__main__':
