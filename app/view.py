@@ -44,7 +44,11 @@ def get_user_posts(user_id, date):
         valid_posts.append(post['items'][0])
 
     for offset in range(1, posts_count, 100):
-        posts = vk.wall.get(**kwargs, count=100, offset=offset)['items']
+        try:
+            posts = vk.wall.get(**kwargs, count=100, offset=offset)['items']
+        except vk_api.ApiError:
+            return []
+
         if posts[-1]['date'] > timestamp:
             valid_posts.extend(posts)
             continue
