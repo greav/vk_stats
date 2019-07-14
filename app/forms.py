@@ -4,7 +4,7 @@ from wtforms.validators import DataRequired
 
 
 class DownloadForm(Form):
-    user_id = IntegerField('User ID', validators=[DataRequired()])
+    id_ = IntegerField('ID', validators=[DataRequired()])
     date = DateField('Date', validators=[DataRequired()])
     post_id_checked = BooleanField('Post ID')
     text_checked = BooleanField('Text')
@@ -16,7 +16,7 @@ class DownloadForm(Form):
 
 
 class StatisticsForm(Form):
-    user_id = IntegerField('User ID', validators=[DataRequired()])
+    id_= IntegerField('ID', validators=[DataRequired()])
     date = DateField('Date', validators=[DataRequired()])
     radio = RadioField('Label', choices=[('hour', 'by hours'), ('dow', 'by days of week'), ('month', 'by months'),
                                          ('year', 'by years')], default='hour')

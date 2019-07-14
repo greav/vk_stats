@@ -15,17 +15,16 @@ from matplotlib import pyplot as plt
 from collections import OrderedDict
 
 
-def get_user_posts(user_id, date):
+def get_wall_posts(id_, date):
     date = datetime.datetime.strptime(date, '%Y-%m-%d')
-    timestamp = calendar.timegm(date.utctimetuple())
-
+    timestamp = calendar.timegm(date.utctimetuple()) - 3*60*60
     session = vk_api.VkApi(token=ACCESS_TOKEN)
     vk = session.get_api()
 
-    if isinstance(user_id, int):
-        kwargs = {'owner_id': user_id}
+    if isinstance(id_, int):
+        kwargs = {'owner_id': id_}
     else:
-        kwargs = {'domain': user_id}
+        kwargs = {'domain': id_}
 
     try:
         post = vk.wall.get(**kwargs, count=1)
@@ -73,10 +72,10 @@ def download():
 
 @app.route('/download/data.csv', methods=['POST'])
 def generate_csv():
-    # process user_id or user domain
-    user_id = request.form.get('user_id')
-    if user_id.isdigit():
-        user_id = int(user_id)
+    # process id_ or domain
+    id_ = request.form.get('id_')
+    if id_.isdigit():
+        id_ = int(id_)
 
     date = request.form.get('date')
 
@@ -100,10 +99,10 @@ def generate_csv():
         flash('You cannot select "Number of attachments" field without "Attachments" field')
         return redirect(url_for('download'))
 
-    posts = get_user_posts(user_id, date)
+    posts = get_wall_posts(id_, date)
 
     if not posts:
-        flash('No posts for this user. Try another date or user ID')
+        flash('No posts for this user. Try another date or ID')
         return redirect(url_for('download'))
 
     # generator for csv file
@@ -172,17 +171,17 @@ def statistics():
     form = StatisticsForm()
 
     if request.method == 'POST':
-        # process user_id or user domain
-        user_id = request.form.get('user_id')
-        if user_id.isdigit():
-            user_id = int(user_id)
+        # process id_ or user domain
+        id_ = request.form.get('id_')
+        if id_.isdigit():
+            id_ = int(id_)
 
         date = request.form.get('date')
         radio_button = request.form.get('radio')
 
-        posts = filter_posts(get_user_posts(user_id, date))
+        posts = filter_posts(get_wall_posts(id_, date))
         if not posts:
-            flash('No data to draw. Try another date or user ID')
+            flash('No data to draw. Try another date or ID')
             return redirect(request.url)
 
         plot_url = get_plot_url(posts, radio_button)
