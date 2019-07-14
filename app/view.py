@@ -15,6 +15,24 @@ from matplotlib import pyplot as plt
 from collections import OrderedDict
 
 
+execute_get_wall_posts = vk_api.execute.VkFunction(args=('get_args', 'offset', 'timestamp', 'n_request'),
+                                                   code="""
+    var get_args = %(get_args)s;
+    var posts = [];
+    var i = 0;
+    while (i < %(n_request)s){
+        get_args.offset = %(offset)s + i*100;
+        var response = API.wall.get(get_args).items;
+        posts = posts + response;
+        if (response.length < 100)
+            return posts;
+        i = i + 1;
+    }
+
+    return posts;                                               
+""")
+
+
 def get_wall_posts(id_, date):
     date = datetime.datetime.strptime(date, '%Y-%m-%d')
     # timestamp correction for Moscow time
@@ -23,12 +41,12 @@ def get_wall_posts(id_, date):
     vk = session.get_api()
 
     if isinstance(id_, int):
-        kwargs = {'owner_id': id_}
+        get_args = {'owner_id': id_}
     else:
-        kwargs = {'domain': id_}
+        get_args = {'domain': id_}
 
     try:
-        post = vk.wall.get(**kwargs, count=1)
+        post = vk.wall.get(**get_args, count=1)
     except vk_api.ApiError:
         return []
 
@@ -43,9 +61,12 @@ def get_wall_posts(id_, date):
     if post['items'][0]['date'] > timestamp:
         valid_posts.append(post['items'][0])
 
-    for offset in range(1, posts_count, 100):
+    get_args["count"] = 100
+    step = 500
+    n_request = step / 100
+    for offset in range(1, posts_count, step):
         try:
-            posts = vk.wall.get(**kwargs, count=100, offset=offset)['items']
+            posts = execute_get_wall_posts(vk, get_args, offset=offset, timestamp=timestamp, n_request=n_request)
         except vk_api.ApiError:
             return []
 
@@ -58,7 +79,6 @@ def get_wall_posts(id_, date):
             if post['date'] < timestamp:
                 valid_posts.extend(posts[:i])
                 return valid_posts
-
     return valid_posts
 
 
