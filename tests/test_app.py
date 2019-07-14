@@ -16,7 +16,7 @@ def download_data(client, user_id, date, post_id_checked, text_checked, attachme
     """
     helper function for download post form
     """
-    return client.post('/downlo ad/data.csv', data=dict(
+    return client.post('/download/data.csv', data=dict(
         user_id=user_id, date=date, post_id_checked=post_id_checked, text_checked=text_checked,
         attachments_checked=attachments_checked, n_attachments_checked=n_attachments_checked,
         n_likes_checked=n_likes_checked, n_reposts_checked=n_reposts_checked, n_comments_checked=n_comments_checked
