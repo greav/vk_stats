@@ -8,9 +8,23 @@
 {% block selected_about_page %} active {% endblock %}
 
 {% block content_title %}
-    About page
+    About
 {% endblock %}
 
 {% block content %}
-    Some content
+<p>This application is intended to receive data and statistics about posts on the wall of the VK user
+    by ID and date from which the data should be taken into account.</p>
+
+<p>On the download page, you can enter the user ID (or domain) and date,
+    and select the required fields that need to be downloaded. The file will be received in the CSV format.</p>
+
+<p>On the statistics page for the entered ID (or domain) and date, you can get statistics
+    on the number of posts and the average number of likes/reposts/comments by:</p>
+    <ul>
+        <li>hours</li>
+        <li>days of the week</li>
+        <li>months</li>
+        <li>years</li>
+    </ul>
+
 {% endblock %}
