@@ -17,6 +17,7 @@ from collections import OrderedDict
 
 def get_wall_posts(id_, date):
     date = datetime.datetime.strptime(date, '%Y-%m-%d')
+    # timestamp correction for Moscow time
     timestamp = calendar.timegm(date.utctimetuple()) - 3*60*60
     session = vk_api.VkApi(token=ACCESS_TOKEN)
     vk = session.get_api()
@@ -38,6 +39,7 @@ def get_wall_posts(id_, date):
 
     valid_posts = []
 
+    # check if pinned post satisfies the timestamp
     if post['items'][0]['date'] > timestamp:
         valid_posts.append(post['items'][0])
 
@@ -47,6 +49,7 @@ def get_wall_posts(id_, date):
         except vk_api.ApiError:
             return []
 
+        # if last post of response satisfies the timestamp then continue with new API request
         if posts[-1]['date'] > timestamp:
             valid_posts.extend(posts)
             continue
