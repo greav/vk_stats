@@ -6,14 +6,12 @@ import base64
 import pandas as pd
 import seaborn as sns
 
-from app import app
+from app import app, vk
 from .forms import DownloadForm, StatisticsForm
-from .config import ACCESS_TOKEN
 
 from flask import render_template, request, Response, redirect, url_for, flash
 from matplotlib import pyplot as plt
 from collections import OrderedDict
-
 
 execute_get_wall_posts = vk_api.execute.VkFunction(args=('get_args', 'offset', 'timestamp', 'n_request'),
                                                    code="""
@@ -36,9 +34,7 @@ execute_get_wall_posts = vk_api.execute.VkFunction(args=('get_args', 'offset', '
 def get_wall_posts(id_, date):
     date = datetime.datetime.strptime(date, '%Y-%m-%d')
     # timestamp correction for Moscow time
-    timestamp = calendar.timegm(date.utctimetuple()) - 3*60*60
-    session = vk_api.VkApi(token=ACCESS_TOKEN)
-    vk = session.get_api()
+    timestamp = calendar.timegm(date.utctimetuple()) - 3 * 60 * 60
 
     if isinstance(id_, int):
         get_args = {'owner_id': id_}
@@ -79,6 +75,7 @@ def get_wall_posts(id_, date):
             if post['date'] < timestamp:
                 valid_posts.extend(posts[:i])
                 return valid_posts
+
     return valid_posts
 
 
@@ -97,7 +94,7 @@ def download():
 def generate_csv():
     # process id_ or domain
     id_ = request.form.get('id_')
-    if id_.isdigit():
+    if id_.lstrip('-').isdigit():
         id_ = int(id_)
 
     date = request.form.get('date')
@@ -115,11 +112,6 @@ def generate_csv():
     # not any checkbutton selected
     if not any(checked_fields.values()):
         flash('You should choose at least one of the options above')
-        return redirect(url_for('download'))
-
-    # number of attachments is selected and no attachments are selected
-    if checked_fields['n_attachments'] and not checked_fields['attachments']:
-        flash('You cannot select "Number of attachments" field without "Attachments" field')
         return redirect(url_for('download'))
 
     posts = get_wall_posts(id_, date)
@@ -143,7 +135,11 @@ def generate_csv():
                 attachments = get_attachments(post)
                 row.append(f'"{attachments}"')
             if checked_fields['n_attachments']:
-                n_attachments = len(attachments) if attachments else 0
+                if not checked_fields['attachments']:
+                    attachments = get_attachments(post)
+                    n_attachments = len(attachments)
+                else:
+                    n_attachments = len(attachments)
                 row.append(str(n_attachments))
             if checked_fields['n_likes']:
                 row.append(str(post['likes']['count']))
@@ -196,7 +192,7 @@ def statistics():
     if request.method == 'POST':
         # process id_ or user domain
         id_ = request.form.get('id_')
-        if id_.isdigit():
+        if id_.lstrip('-').isdigit():
             id_ = int(id_)
 
         date = request.form.get('date')

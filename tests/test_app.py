@@ -33,18 +33,6 @@ def test_empty_checkbuttons(client):
     assert b'You should choose at least one of the options above' in response.data
 
 
-def test_n_attachments(client):
-    """
-    check if number of attachments option has been selected and attachments option haven't been selected
-    """
-    response = download_data(client, id_='greav_t', date='2019-01-15', post_id_checked='y', text_checked='y',
-                             attachments_checked=None, n_attachments_checked='y', n_likes_checked=None,
-                             n_reposts_checked=None, n_comments_checked=None)
-
-    assert (b'You cannot select &#34;Number of attachments&#34; field without &#34;Attachments&#34; field'
-            in response.data)
-
-
 def test_no_posts_to_download(client):
     """
     check if the get_wall_posts function did not return any posts for download request

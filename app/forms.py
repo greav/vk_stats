@@ -16,7 +16,7 @@ class DownloadForm(Form):
 
 
 class StatisticsForm(Form):
-    id_= IntegerField('ID', validators=[DataRequired()])
+    id_ = IntegerField('ID', validators=[DataRequired()])
     date = DateField('Date', validators=[DataRequired()])
     radio = RadioField('Label', choices=[('hour', 'by hours'), ('dow', 'by days of week'), ('month', 'by months'),
                                          ('year', 'by years')], default='hour')

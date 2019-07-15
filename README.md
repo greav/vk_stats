@@ -1,7 +1,7 @@
 VK_Stats
 ======
 
-The basic app made on the Flask framework for downloading data and receiving statistics about the user's VK posts.
+The basic app made on the Flask framework for downloading data and receiving statistics about the user's VK posts or community VK posts.
 
 Install
 -------
