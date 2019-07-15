@@ -242,7 +242,8 @@ def get_plot_url(valid_posts, radio_button):
     img = io.BytesIO()
 
     df = pd.DataFrame(data=valid_posts, columns=['post_id', 'date', 'n_likes', 'n_comments', 'n_reposts'])
-    df['date'] = pd.to_datetime(df['date'], unit='s')
+    # taking into account Moscow time
+    df['date'] = pd.to_datetime(df['date'], unit='s') + datetime.timedelta(hours=3)
 
     if radio_button == 'hour':
         gb = df.groupby(lambda i: df.loc[i, 'date'].hour)[['n_likes', 'n_comments', 'n_reposts']].agg(
