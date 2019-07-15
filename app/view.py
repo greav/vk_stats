@@ -13,6 +13,7 @@ from flask import render_template, request, Response, redirect, url_for, flash
 from matplotlib import pyplot as plt
 from collections import OrderedDict
 
+# "execute" type function to make more than 3 requests per second
 execute_get_wall_posts = vk_api.execute.VkFunction(args=('get_args', 'offset', 'timestamp', 'n_request'),
                                                    code="""
     var get_args = %(get_args)s;
@@ -32,6 +33,9 @@ execute_get_wall_posts = vk_api.execute.VkFunction(args=('get_args', 'offset', '
 
 
 def get_wall_posts(id_, date):
+    """
+    Get all user posts from a specific date
+    """
     date = datetime.datetime.strptime(date, '%Y-%m-%d')
     # timestamp correction for Moscow time
     timestamp = calendar.timegm(date.utctimetuple()) - 3 * 60 * 60
@@ -53,13 +57,13 @@ def get_wall_posts(id_, date):
 
     valid_posts = []
 
-    # check if pinned post satisfies the timestamp
+    # check if first post (it may be pinned post very early date) satisfies the timestamp
     if post['items'][0]['date'] > timestamp:
         valid_posts.append(post['items'][0])
 
     get_args["count"] = 100
     step = 500
-    n_request = step / 100
+    n_request = step / 100  # number of requests in "execute" function
     for offset in range(1, posts_count, step):
         try:
             posts = execute_get_wall_posts(vk, get_args, offset=offset, timestamp=timestamp, n_request=n_request)
@@ -92,7 +96,7 @@ def download():
 
 @app.route('/download/data.csv', methods=['POST'])
 def generate_csv():
-    # process id_ or domain
+    # process user/community id or user/community domain
     id_ = request.form.get('id_')
     if id_.lstrip('-').isdigit():
         id_ = int(id_)
@@ -154,6 +158,9 @@ def generate_csv():
 
 
 def get_attachments(post):
+    """
+    Process a post object to get all URL attachments (photo, link, video, doc and repost)
+    """
     attachments = post.get('attachments')
     attachments_urls = []
     if attachments:
@@ -191,11 +198,17 @@ def get_attachments(post):
 
 
 def get_video_url(video):
+    """
+    Processes a video object to get URL of other platforms (not VK)
+    """
     video_id = video['id']
     owner_id = video['owner_id']
     access_key = video['access_key']
-    video_url = vk.video.get(owner_id=owner_id, videos=f'{owner_id}_{video_id}_{access_key}')["items"][0]['player']
-    return video_url
+    try:
+        video_url = vk.video.get(owner_id=owner_id, videos=f'{owner_id}_{video_id}_{access_key}')["items"][0]['player']
+        return video_url
+    except vk_api.ApiError:
+        return f'https://vk.com/wall{owner_id}_{video_id}'
 
 
 @app.route('/statistics', methods=['GET', 'POST'])
@@ -203,7 +216,7 @@ def statistics():
     form = StatisticsForm()
 
     if request.method == 'POST':
-        # process id_ or user domain
+        # process user/community id or user/community domain
         id_ = request.form.get('id_')
         if id_.lstrip('-').isdigit():
             id_ = int(id_)
@@ -224,6 +237,9 @@ def statistics():
 
 
 def filter_posts(posts):
+    """
+    Get necessary post fields for the statistics page
+    """
     valid_posts = []
     for post in posts:
         post_id = post['id']
@@ -239,6 +255,9 @@ def filter_posts(posts):
 
 
 def get_plot_url(valid_posts, radio_button):
+    """
+     Get plot url fields for rendering graphics
+    """
     img = io.BytesIO()
 
     df = pd.DataFrame(data=valid_posts, columns=['post_id', 'date', 'n_likes', 'n_comments', 'n_reposts'])
