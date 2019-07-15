@@ -67,7 +67,7 @@ def get_wall_posts(id_, date):
             return []
 
         # if last post of response satisfies the timestamp then continue with new API request
-        if posts[-1]['date'] > timestamp:
+        if posts and posts[-1]['date'] > timestamp:
             valid_posts.extend(posts)
             continue
 
