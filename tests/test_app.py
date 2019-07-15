@@ -55,3 +55,21 @@ def test_no_posts_to_draw(client):
         response = client.post('/statistics', data=dict(
             id_='some_id', date='2019-01-01', radio='hour'), follow_redirects=True)
         assert b'No data to draw. Try another date or ID' in response.data
+
+
+def test_get_about_page(client):
+    response = client.get('/')
+    assert response.status_code == 200
+    assert b'About' in response.data
+
+
+def test_get_download_page(client):
+    response = client.get('/download')
+    assert response.status_code == 200
+    assert b'Download page' in response.data
+
+
+def test_get_statistics_page(client):
+    response = client.get('/statistics')
+    assert response.status_code == 200
+    assert b'Statistics page' in response.data
