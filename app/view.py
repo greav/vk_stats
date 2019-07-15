@@ -171,9 +171,14 @@ def get_attachments(post):
                 attachments_urls.append(attachment['doc']['url'])
                 continue
             elif attachment.get('type') == 'video':
-                video_id = attachment['video']['id']
-                owner_id = attachment['video']['owner_id']
-                video_url = f'https://vk.com/video{owner_id}_{video_id}'
+                video = attachment['video']
+                # if the video is on other platforms
+                if video.get('platform'):
+                    video_url = get_video_url(video)
+                else:
+                    video_id = video['id']
+                    owner_id = video['owner_id']
+                    video_url = f'https://vk.com/video{owner_id}_{video_id}'
                 attachments_urls.append(video_url)
     elif post.get('copy_history'):
         repost = post['copy_history'][0]
@@ -183,6 +188,14 @@ def get_attachments(post):
         attachments_urls.append(repost_url)
 
     return attachments_urls
+
+
+def get_video_url(video):
+    video_id = video['id']
+    owner_id = video['owner_id']
+    access_key = video['access_key']
+    video_url = vk.video.get(owner_id=owner_id, videos=f'{owner_id}_{video_id}_{access_key}')["items"][0]['player']
+    return video_url
 
 
 @app.route('/statistics', methods=['GET', 'POST'])
